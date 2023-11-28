@@ -26,7 +26,7 @@ pub fn group(msg: &str) -> Result<SocketAddr> {
     Ok(addr)
 }
 
-pub fn join(new_member_sock: &UdpSocket, group: SocketAddr) -> Result<()> {
+pub fn join(new_member_sock: &UdpSocket, group: &SocketAddr) -> Result<()> {
     // ping_sock must be different from new_member_sock bc:
     // - nms is not bound to 127.0.0.1
     // - nms cannot be bound to 127.0.0.1 if it wants to
