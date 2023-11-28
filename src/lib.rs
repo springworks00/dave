@@ -52,6 +52,54 @@ pub fn join(new_member_sock: &UdpSocket, group: &SocketAddr) -> Result<()> {
     Ok(())
 }
 
+// TODO: rework API since group() must produce a socket as
+//       well to pre-add it to the multicast group. 
+//
+//       we might as well put join and group together,
+//       though they still must produce both a sock and addr,
+//       (bc you must send to the addr, but receive from
+//        and unknown port "exit")
+//       - if we want to be elegant, we can `bind` the sock
+//         to the multicast_ip + random port and `connect` it
+//         to the multicast_ip + multicast_port, then set
+//         up the forwarding service to forward not from
+//         an exit but from the entrance.
+//       - however, the price of this elegance is that
+//         we have a risk of packet duplication (other
+//         device's forwarding services
+//       - and yet, this risk is barely anything. for
+//         every message we have an extra 1 in 16,000 chance
+//         of it conflicting with a port on any of the devices.
+//         - it is way more likely we have a port collision
+//           with a non-dave application.
+//         - we are essentially reducing the 16000*num_devices
+//           chance of collision down to just 16000.
+//
+//       conclusion: we take the risk
+//
+//       `bind` the sock to multicast_ip + random port
+//       `bind` the forwarding service to multicast_ip + multicast_port
+//       `connect` the sock to multicast_ip + multicast_port
+//
+//       (and join the multicast_ip group and such)
+//
+//       that's it. now you only need return the UdpSocket
+
+#[test]
+fn example() {
+    let sock = dave::bind("test");
+
+    // sends "multi_ip:random" -> "multi_ip:multi_port"
+    sock.send();
+
+    // recvs from "multi_ip:multi_port"
+    sock.recv();
+
+    // remember forwarding service must be reworked to forward
+    // from the entrance (not from a random exit)!
+    // TODO^^^
+}
+
 #[test]
 fn join_group() {
     let phrase = "Well Hello There, Old Sport!";
@@ -68,22 +116,11 @@ fn join_group() {
     });
 
     let (sock, g) = group(phrase).unwrap();
-    //let sock = UdpSocket::bind("0.0.0.0:0").unwrap();
     join(&sock, &g).unwrap();
 
     let mut buf = [0; 1024];
     assert!(sock.recv_from(&mut buf).is_ok());
 
-    // XXX
-    // conclusion: forwarding service is botched
-    // possibilities:
-    // - submittance not working on join().
-    //   neither sock is even being received on the entrance,
-    //   possibly because the entrance is not listening on
-    //   loopback.
-    // - no tmp solution. must rework the registration
-    //   process, knowing that the entrance socket will not
-    //   receive from 127.0.0.1, ONLY the multicast addr
 }
 
 fn local_forwarding_service(entrance: UdpSocket) {
