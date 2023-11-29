@@ -1,8 +1,9 @@
 use std::net::*; 
 use std::{str, thread};
 use std::time::Duration;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::sync::{Arc, Mutex};
+use std::cell::UnsafeCell;
 
 use anyhow::Result;
 use xxhash_rust::xxh32::xxh32;
@@ -13,6 +14,46 @@ const MIN_PORT: u32 = 49152;
 pub const BUFFER_SIZE: usize = 1024;
 
 pub type Member = UdpSocket;
+
+pub struct MemberTable<'a> {
+    buf: UnsafeCell<[u8; BUFFER_SIZE]>,
+    table: UnsafeCell<HashMap<&'a str, (Member, Group)>>,
+}
+
+impl<'a> MemberTable<'a> {
+    pub fn send(&self, msg: &'a str, data: Option<&str>) {
+        let (sock, group) = self.get(msg);
+        
+        let data = data.unwrap_or(msg);
+        sock.send_to(data.as_bytes(), group).unwrap();
+    }
+    pub fn recv(&self, msg: &'a str) -> Option<String> {
+        let buf = unsafe { &mut *self.buf.get() };
+        let (sock, _) = self.get(msg);
+
+        let (num_bytes, _) = sock.recv_from(buf).ok()?;
+        let data = str::from_utf8(&buf[..num_bytes]).unwrap();
+        Some(data.to_string())
+    }
+    pub fn get(&self, msg: &'a str) -> (&UdpSocket, &Group) {
+        let table = unsafe { &mut *self.table.get() };
+        let (sock, group) = table.entry(msg).or_insert_with(|| {
+            let (m, g) = (member(), group(msg));
+            join(&m, &g).unwrap();
+            (m, g)
+        });
+        (sock, group)
+    }
+}
+
+impl<'a> Default for MemberTable<'a> {
+    fn default() -> Self {
+        Self {
+            buf: UnsafeCell::new([0; BUFFER_SIZE]),
+            table: UnsafeCell::new(HashMap::new()),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Group {
@@ -159,5 +200,22 @@ mod tests {
         }));
 
         threads.into_iter().for_each(|t| t.join().unwrap());
+    }
+    #[test]
+    fn member_table_basic() {
+        thread::spawn(|| {
+            let mt = MemberTable::default();
+
+            assert!(mt.recv("#entity-cam09").is_some());
+            assert_eq!(
+                mt.recv("@office-speakers"), 
+                Some("terminate".to_string()),
+            );
+        });
+        thread::sleep(Duration::from_millis(100));
+
+        let mt = MemberTable::default();
+        mt.send("@office-speakers", Some("terminate"));
+        mt.send("#entity-cam09", None);
     }
 }
