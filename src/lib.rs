@@ -21,6 +21,9 @@ pub struct MemberTable<'a> {
 }
 
 impl<'a> MemberTable<'a> {
+    pub fn preload(&self, msg: &'a str) {
+        let _ = self.get(msg);
+    }
     pub fn send(&self, msg: &'a str, data: Option<&str>) {
         let (sock, group) = self.get(msg);
         
@@ -35,7 +38,7 @@ impl<'a> MemberTable<'a> {
         let data = str::from_utf8(&buf[..num_bytes]).unwrap();
         Some(data.to_string())
     }
-    pub fn get(&self, msg: &'a str) -> (&UdpSocket, &Group) {
+    fn get(&self, msg: &'a str) -> (&UdpSocket, &Group) {
         let table = unsafe { &mut *self.table.get() };
         let (sock, group) = table.entry(msg).or_insert_with(|| {
             let (m, g) = (member(), group(msg));
@@ -217,5 +220,12 @@ mod tests {
         let mt = MemberTable::default();
         mt.send("@office-speakers", Some("terminate"));
         mt.send("#entity-cam09", None);
+    }
+    #[test]
+    fn with_python() {
+        
+        let mt = MemberTable::default();
+        mt.send("#entity-cam09", None);
+        mt.send("@office-speakers", Some("terminate"));
     }
 }
