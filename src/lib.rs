@@ -21,8 +21,10 @@ pub struct MemberTable<'a> {
 }
 
 impl<'a> MemberTable<'a> {
-    pub fn preload(&self, msg: &'a str) {
-        let _ = self.get(msg);
+    pub fn preload(&self, msgs: &[&'a str]) {
+        msgs.iter().for_each(|msg| {
+            let _ = self.get(msg);
+        });
     }
     pub fn send(&self, msg: &'a str, data: Option<&str>) {
         let (sock, group) = self.get(msg);
@@ -223,7 +225,6 @@ mod tests {
     }
     #[test]
     fn with_python() {
-        
         let mt = MemberTable::default();
         mt.send("#entity-cam09", None);
         mt.send("@office-speakers", Some("terminate"));

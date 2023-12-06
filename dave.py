@@ -1,11 +1,5 @@
-import socket
-import time
-import threading
-import sys
-import queue
-import unittest
-import struct
-import xxhash
+import socket, time, threading, sys
+import queue, struct, xxhash
 from typing import *
 from collections import namedtuple
 
@@ -14,14 +8,13 @@ MIN_PORT = 49152
 
 BUFFER_SIZE = 1024
 
-# type Member = UdpSocket
-
 class MemberTable:
     def __init__(self):
         self.table = {}
 
-    def preload(self, msg):
-        _, _ = self._get(msg)
+    def preload(self, msgs):
+        for msg in msgs:
+            _, _ = self._get(msg)
 
     def send(self, msg, data=None):
         sock, group = self._get(msg)
@@ -116,48 +109,13 @@ def join_multicast(sock, addr):
 
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-#class DaveTest(unittest.TestCase):
-#    def send_receive(self):
-#        pass
-#
-#    def send_receive_multiple(self):
-#        pass
-#
-#    def member_table_basic(self):
-#        def mt_thread():
-#            mt = MemberTable()
-#
-#            self.Assert(mt.recv("entity-cam09") is not None)
-#
-#            self.AssertEqual(
-#                mt.recv("@office-speakers"),
-#                "terminate",
-#            )
-#        threading.Thread(target=mt_thread)
-#        time.sleep(0.1)
-#
-#        mt = MemberTable()
-#        mt.send("@office-speakers", "terminate");
-#        mt.send("#entity-cam09", None);
-
-PHRASE = "Well Hello There, Old Sport!"
 
 if __name__ == "__main__":
     pass
-    #mt = MemberTable()
-    #mt.preload("#entity-cam09")
-    #mt.preload("@office-speakers")
-
-    #print(mt.recv("#entity-cam09"))
-    #print(mt.recv("@office-speakers"))
-
-    # -----------------
-   
     #want = Group(("224.200.82.1", 52441), ("0.0.0.0", 52442))
     #got = group(PHRASE)
 
     #print(want == got)
     #print(want)
     #print(got)
-
     
