@@ -18,9 +18,17 @@ pub type Member = UdpSocket;
 pub struct MemberTable<'a> {
     buf: UnsafeCell<[u8; BUFFER_SIZE]>,
     table: UnsafeCell<HashMap<&'a str, (Member, Group)>>,
+    nonblocking: bool,
 }
 
 impl<'a> MemberTable<'a> {
+    pub fn nonblocking() -> Self {
+        Self {
+            buf: UnsafeCell::new([0; BUFFER_SIZE]),
+            table: UnsafeCell::new(HashMap::new()),
+            nonblocking: true,
+        }
+    }
     pub fn preload(&self, msgs: &[&'a str]) {
         msgs.iter().for_each(|msg| {
             let _ = self.get(msg);
@@ -44,6 +52,9 @@ impl<'a> MemberTable<'a> {
         let table = unsafe { &mut *self.table.get() };
         let (sock, group) = table.entry(msg).or_insert_with(|| {
             let (m, g) = (member(), group(msg));
+            if self.nonblocking {
+                m.set_nonblocking(true).unwrap();
+            }
             join(&m, &g).unwrap();
             (m, g)
         });
@@ -56,6 +67,7 @@ impl<'a> Default for MemberTable<'a> {
         Self {
             buf: UnsafeCell::new([0; BUFFER_SIZE]),
             table: UnsafeCell::new(HashMap::new()),
+            nonblocking: false,
         }
     }
 }
