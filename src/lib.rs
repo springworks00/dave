@@ -39,13 +39,13 @@ impl<'a> MemberTable<'a> {
         
         let data = data.unwrap_or(msg);
         sock.send_to(data.as_bytes(), group).unwrap();
-        println!("sending to: {:?}", group);
+        // println!("sending to: {:?}", group);
     }
     pub fn recv(&self, msg: &'a str) -> Option<String> {
         let buf = unsafe { &mut *self.buf.get() };
         let (sock, _) = self.get(msg);
 
-        println!("recieving on: {:?}", sock.local_addr());
+        // println!("recieving on: {:?}", sock.local_addr());
         let (num_bytes, _) = sock.recv_from(buf).ok()?;
         let data = str::from_utf8(&buf[..num_bytes]).unwrap();
         Some(data.to_string())
@@ -125,14 +125,14 @@ fn join(member: &Member, group: &Group) -> Result<()> {
     // create forwarding service if non-existant
     match UdpSocket::bind(&format!("0.0.0.0:{}", group.broadcast_port)) {
         Ok(f_sock) => {
-            println!("forwarding service listening on {:?}", f_sock.local_addr());
+            // println!("forwarding service listening on {:?}", f_sock.local_addr());
             let j_sock = UdpSocket::bind(group.join)?;
             // join_multicast(&f_sock, group.group)?; 
 
             thread::spawn(move || forwarding_service(f_sock, j_sock));
         },
         Err(e) => {
-            println!("failed to spawn forwarding service ({}): {}", group.broadcast_port, e);
+            // println!("failed to spawn forwarding service ({}): {}", group.broadcast_port, e);
         },
     }
 
@@ -152,7 +152,7 @@ fn forwarding_service(f_sock: UdpSocket, j_sock: UdpSocket) -> ! {
         loop {
             let (_, addr) = j_sock.recv_from(&mut buf).unwrap();
             member_writer.lock().unwrap().insert(addr);
-            println!("got a join request from: {:?}", addr);
+            // println!("got a join request from: {:?}", addr);
         }
     });
 
@@ -165,7 +165,7 @@ fn forwarding_service(f_sock: UdpSocket, j_sock: UdpSocket) -> ! {
             continue;
         };
         for member in members.lock().unwrap().iter() {
-            println!("forwarding data to: {:?}", member);
+            // println!("forwarding data to: {:?}", member);
             let _ = exit.send_to(&buf[..num_bytes], member);
         }
     }
