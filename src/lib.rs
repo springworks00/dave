@@ -39,6 +39,7 @@ impl<'a> MemberTable<'a> {
         
         let data = data.unwrap_or(msg);
         sock.send_to(data.as_bytes(), group).unwrap();
+        println!("sending to: {:?}", group);
     }
     pub fn recv(&self, msg: &'a str) -> Option<String> {
         let buf = unsafe { &mut *self.buf.get() };
@@ -119,6 +120,7 @@ fn join(member: &Member, group: &Group) -> Result<()> {
 
     // create forwarding service if non-existant
     if let Ok(f_sock) = UdpSocket::bind(group.group) {
+        println!("forwarding service listening on {:?}", group.group);
         let j_sock = UdpSocket::bind(group.join)?;
         // join_multicast(&f_sock, group.group)?; 
 
