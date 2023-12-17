@@ -73,7 +73,7 @@ impl<'a> Default for MemberTable<'a> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Group {
+struct Group {
     group: SocketAddrV4,
     join: SocketAddrV4,
 }
@@ -86,18 +86,19 @@ impl ToSocketAddrs for Group {
     }
 }
 
-pub fn group(msg: &str) -> Group {
+fn group(msg: &str) -> Group {
     let hash = xxh32(msg.as_bytes(), 0);
-    let ip = Ipv4Addr::new(
-        224,
-        ((hash >> 13) & 0xFF) as u8,
-        ((hash >> 21) & 0xFF) as u8,
-        ((hash >> 29) & 0xFF) as u8,
-    );
+    //let ip = Ipv4Addr::new(
+    //    224,
+    //    ((hash >> 13) & 0xFF) as u8,
+    //    ((hash >> 21) & 0xFF) as u8,
+    //    ((hash >> 29) & 0xFF) as u8,
+    //);
     let port = hash % (MAX_PORT - MIN_PORT) + MIN_PORT;
     let join_port = (hash + 1) % (MAX_PORT - MIN_PORT) + MIN_PORT;
     
-    let addr = format!("{}:{}", ip, port);
+    //let addr = format!("{}:{}", ip, port);
+    let addr = format!("255.255.255.255:{}", port);
     let join = format!("0.0.0.0:{}", join_port);
 
     Group {
@@ -106,24 +107,26 @@ pub fn group(msg: &str) -> Group {
     }
 }
 
-pub fn member() -> Member {
-    UdpSocket::bind("0.0.0.0:0").unwrap()
+fn member() -> Member {
+    let sock = UdpSocket::bind("0.0.0.0:0").unwrap();
+    sock.set_broadcast(true).unwrap();
+    sock
 }
 
-pub fn join(member: &Member, group: &Group) -> Result<()> {
+fn join(member: &Member, group: &Group) -> Result<()> {
     // add the member to the multicast ip of the group
-    join_multicast(member, group.group)?;
+    // join_multicast(member, group.group)?;
 
     // create forwarding service if non-existant
     if let Ok(f_sock) = UdpSocket::bind(group.group) {
         let j_sock = UdpSocket::bind(group.join)?;
-        join_multicast(&f_sock, group.group)?; 
+        // join_multicast(&f_sock, group.group)?; 
 
         thread::spawn(move || forwarding_service(f_sock, j_sock));
     }
 
     // submit the member on the group.join address
-    member.send_to(b"KEBAB", group.join)?; 
+    member.send_to(b"DAVE", group.join)?; 
 
     Ok(())
 }
@@ -155,11 +158,11 @@ fn forwarding_service(f_sock: UdpSocket, j_sock: UdpSocket) -> ! {
     }
 }
 
-fn join_multicast(sock: &UdpSocket, addr: SocketAddrV4) -> Result<()> {
-    sock.set_multicast_loop_v4(true)?;
-    sock.join_multicast_v4(addr.ip(), &Ipv4Addr::UNSPECIFIED)?;
-    Ok(())
-}
+// fn join_multicast(sock: &UdpSocket, addr: SocketAddrV4) -> Result<()> {
+//     sock.set_multicast_loop_v4(true)?;
+//     sock.join_multicast_v4(addr.ip(), &Ipv4Addr::UNSPECIFIED)?;
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
