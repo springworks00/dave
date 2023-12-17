@@ -45,6 +45,7 @@ impl<'a> MemberTable<'a> {
         let buf = unsafe { &mut *self.buf.get() };
         let (sock, _) = self.get(msg);
 
+        println!("recieving on: {:?}", sock.local_addr());
         let (num_bytes, _) = sock.recv_from(buf).ok()?;
         let data = str::from_utf8(&buf[..num_bytes]).unwrap();
         Some(data.to_string())
