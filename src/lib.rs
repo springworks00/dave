@@ -76,7 +76,9 @@ impl<'a> Default for MemberTable<'a> {
 
 #[derive(Debug, PartialEq)]
 struct Group {
-    group: SocketAddrV4,
+    //group: SocketAddrV4,
+    broadcast_port: u32,
+    broadcast: SocketAddrV4,
     join: SocketAddrV4,
 }
 
@@ -84,7 +86,7 @@ impl ToSocketAddrs for Group {
     type Iter = std::option::IntoIter<SocketAddr>;
 
     fn to_socket_addrs(&self) -> std::io::Result<Self::Iter> {
-        self.group.to_socket_addrs()
+        self.broadcast.to_socket_addrs()
     }
 }
 
@@ -104,7 +106,8 @@ fn group(msg: &str) -> Group {
     let join = format!("0.0.0.0:{}", join_port);
 
     Group {
-        group: addr.parse().unwrap(),
+        broadcast_port: port,
+        broadcast: addr.parse().unwrap(),
         join: join.parse().unwrap(),
     }
 }
@@ -120,16 +123,16 @@ fn join(member: &Member, group: &Group) -> Result<()> {
     // join_multicast(member, group.group)?;
 
     // create forwarding service if non-existant
-    match UdpSocket::bind(group.group) {
+    match UdpSocket::bind(&format!("0.0.0.0:{}", group.broadcast_port)) {
         Ok(f_sock) => {
-            println!("forwarding service listening on {:?}", group.group);
+            println!("forwarding service listening on {:?}", f_sock.local_addr());
             let j_sock = UdpSocket::bind(group.join)?;
             // join_multicast(&f_sock, group.group)?; 
 
             thread::spawn(move || forwarding_service(f_sock, j_sock));
         },
         Err(e) => {
-            println!("failed to spawn forwarding service ({}): {}", group.group, e);
+            println!("failed to spawn forwarding service ({}): {}", group.broadcast_port, e);
         },
     }
 
