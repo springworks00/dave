@@ -120,12 +120,17 @@ fn join(member: &Member, group: &Group) -> Result<()> {
     // join_multicast(member, group.group)?;
 
     // create forwarding service if non-existant
-    if let Ok(f_sock) = UdpSocket::bind(group.group) {
-        println!("forwarding service listening on {:?}", group.group);
-        let j_sock = UdpSocket::bind(group.join)?;
-        // join_multicast(&f_sock, group.group)?; 
+    match UdpSocket::bind(group.group) {
+        Ok(f_sock) => {
+            println!("forwarding service listening on {:?}", group.group);
+            let j_sock = UdpSocket::bind(group.join)?;
+            // join_multicast(&f_sock, group.group)?; 
 
-        thread::spawn(move || forwarding_service(f_sock, j_sock));
+            thread::spawn(move || forwarding_service(f_sock, j_sock));
+        },
+        Err(e) => {
+            println!("failed to spawn forwarding service ({}): {}", group.group, e);
+        },
     }
 
     // submit the member on the group.join address
@@ -144,6 +149,7 @@ fn forwarding_service(f_sock: UdpSocket, j_sock: UdpSocket) -> ! {
         loop {
             let (_, addr) = j_sock.recv_from(&mut buf).unwrap();
             member_writer.lock().unwrap().insert(addr);
+            println!("got a join request from: {:?}", addr);
         }
     });
 
@@ -156,6 +162,7 @@ fn forwarding_service(f_sock: UdpSocket, j_sock: UdpSocket) -> ! {
             continue;
         };
         for member in members.lock().unwrap().iter() {
+            println!("forwarding data to: {:?}", member);
             let _ = exit.send_to(&buf[..num_bytes], member);
         }
     }
